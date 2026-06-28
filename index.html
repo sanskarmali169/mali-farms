@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Mali Farm Manager - शेत व्यवस्थापन</title>
+<link rel="manifest" href="manifest.json"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- MOBILE HEADER -->
+<header class="mob-header">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+  <div class="mob-logo"><span>🌾</span> <span data-i18n="appName">Mali Farm Manager</span></div>
+  <div class="mob-actions">
+    <button class="mob-icon-btn" onclick="toggleTheme()" title="Toggle Theme" id="themeToggle">🌙</button>
+    <button class="mob-icon-btn" onclick="toggleLang()" title="Language" id="langToggle">EN</button>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🌾</div>
+    <div class="logo-text">
+      <h2 data-i18n="appName">Mali Farm Manager</h2>
+      <p data-i18n="tagline">Farm Accounting & Management</p>
+    </div>
+  </div>
+  <div class="sidebar-controls">
+    <button class="ctrl-btn" onclick="toggleTheme()" id="sideThemeBtn" title="Dark/Light Mode">🌙 <span data-i18n="darkMode">Dark Mode</span></button>
+    <button class="ctrl-btn" onclick="toggleLang()" id="sideLangBtn" title="Language Toggle">🌐 <span id="langLabel">English</span></button>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label" data-i18n="mainMenu">Main Menu</div>
+    <button class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">🏠</span><span data-i18n="nav_dashboard">Dashboard</span></button>
+    <button class="nav-item" onclick="showPage('farms',this)"><span class="nav-icon">🏡</span><span data-i18n="nav_farms">My Farms</span></button>
+    <button class="nav-item" onclick="showPage('crops',this)"><span class="nav-icon">🌱</span><span data-i18n="nav_crops">Crops</span></button>
+    <button class="nav-item" onclick="showPage('expenses',this)"><span class="nav-icon">💸</span><span data-i18n="nav_expenses">Expenses</span></button>
+    <button class="nav-item" onclick="showPage('revenue',this)"><span class="nav-icon">💰</span><span data-i18n="nav_revenue">Revenue / Sales</span></button>
+    <div class="nav-label" data-i18n="planningMenu">Planning & Tasks</div>
+    <button class="nav-item" onclick="showPage('tasks',this)"><span class="nav-icon">📅</span><span data-i18n="nav_tasks">Task Planner</span></button>
+    <div class="nav-label" data-i18n="analyticsMenu">Analytics</div>
+    <button class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span><span data-i18n="nav_analytics">Profit & Analytics</span></button>
+    <button class="nav-item" onclick="showPage('reports',this)"><span class="nav-icon">📄</span><span data-i18n="nav_reports">Reports</span></button>
+    <div class="nav-label" data-i18n="systemMenu">System</div>
+    <button class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span><span data-i18n="nav_settings">Settings</span></button>
+  </div>
+  <div class="sidebar-footer">
+    <div class="farm-select-wrap">
+      <div class="farm-select-label" data-i18n="currentFarm">Active Farm</div>
+      <select id="globalFarmFilter" class="farm-selector" onchange="setActiveFarm(this.value)">
+        <option value="all" data-i18n="allFarms">All Farms</option>
+      </select>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="mainContent">
+
+<!-- ==================== DASHBOARD ==================== -->
+<section class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div>
+      <h1 data-i18n="nav_dashboard">Dashboard</h1>
+      <p id="dashGreeting"></p>
+    </div>
+    <div class="page-header-actions">
+      <span class="date-pill" id="dashDate"></span>
+    </div>
+  </div>
+  <div class="kpi-grid" id="dashKPI"></div>
+  <div class="dashboard-two-col">
+    <div>
+      <div class="section-title" data-i18n="todayTasks">Today's Tasks</div>
+      <div id="dashTodayTasks" class="task-mini-list"></div>
+    </div>
+    <div>
+      <div class="section-title" data-i18n="upcomingTasks">Upcoming Tasks</div>
+      <div id="dashUpcomingTasks" class="task-mini-list"></div>
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="monthlyExpChart">Monthly Expenses</h3><span id="dashChartYear"></span></div>
+      <div class="chart-wrap"><canvas id="cMonthlyExp"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="expCatChart">Expense Categories</h3></div>
+      <div class="chart-wrap"><canvas id="cExpCat"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="revVsExpChart">Revenue vs Expenses</h3></div>
+      <div class="chart-wrap"><canvas id="cRevExp"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="profitTrend">Profit Trend</h3></div>
+      <div class="chart-wrap"><canvas id="cProfitTrend"></canvas></div>
+    </div>
+  </div>
+  <div class="section-title" data-i18n="recentTx">Recent Transactions</div>
+  <div id="dashRecentTx" class="recent-tx-list"></div>
+</section>
+
+<!-- ==================== FARMS ==================== -->
+<section class="page" id="page-farms">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_farms">My Farms</h1><p data-i18n="farmsSubtitle">Manage all your farms</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-primary" onclick="openFarmModal()">＋ <span data-i18n="addFarm">Add Farm</span></button>
+    </div>
+  </div>
+  <div class="farms-grid" id="farmsGrid"></div>
+</section>
+
+<!-- ==================== CROPS ==================== -->
+<section class="page" id="page-crops">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_crops">Crops</h1><p data-i18n="cropsSubtitle">Manage crops per farm</p></div>
+    <div class="page-header-actions">
+      <select class="filter-sel" id="cropFarmFilter" onchange="renderCropsPage()">
+        <option value="all" data-i18n="allFarms">All Farms</option>
+      </select>
+      <button class="btn btn-primary" onclick="openCropModal()">＋ <span data-i18n="addCrop">Add Crop</span></button>
+    </div>
+  </div>
+  <div class="crops-grid" id="cropsGrid"></div>
+</section>
+
+<!-- ==================== EXPENSES ==================== -->
+<section class="page" id="page-expenses">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_expenses">Expenses</h1><p data-i18n="expSubtitle">Track all farm expenditures</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-primary" onclick="openExpModal()">＋ <span data-i18n="addExpense">Add Expense</span></button>
+    </div>
+  </div>
+  <div class="kpi-strip" id="expKPI"></div>
+  <div class="table-card">
+    <div class="table-toolbar">
+      <h3 data-i18n="allExpenses">All Expenses</h3>
+      <div class="toolbar-right">
+        <input class="search-inp" id="expSearch" placeholder="🔍 Search..." oninput="renderExpTable()"/>
+        <select class="filter-sel" id="expFarmFilter" onchange="renderExpTable()">
+          <option value="" data-i18n="allFarms">All Farms</option>
+        </select>
+        <select class="filter-sel" id="expCropFilter" onchange="renderExpTable()">
+          <option value="" data-i18n="allCrops">All Crops</option>
+        </select>
+        <select class="filter-sel" id="expCatFilter" onchange="renderExpTable()">
+          <option value="" data-i18n="allCats">All Categories</option>
+        </select>
+        <select class="filter-sel" id="expMonthFilter" onchange="renderExpTable()">
+          <option value="" data-i18n="allMonths">All Months</option>
+        </select>
+        <button class="btn btn-sm btn-outline" onclick="exportExpExcel()">📥 Excel</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th><th data-i18n="date">Date</th><th data-i18n="farm">Farm</th><th data-i18n="crop">Crop</th>
+          <th data-i18n="category">Category</th><th data-i18n="description">Description</th>
+          <th data-i18n="amount">Amount</th><th data-i18n="payment">Payment</th><th data-i18n="actions">Actions</th>
+        </tr></thead>
+        <tbody id="expTableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-foot" id="expFoot"></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-hdr"><h3 data-i18n="expCatChart">Category-wise Expenses</h3></div>
+    <div class="chart-wrap"><canvas id="cExpPage"></canvas></div>
+  </div>
+</section>
+
+<!-- ==================== REVENUE ==================== -->
+<section class="page" id="page-revenue">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_revenue">Revenue / Sales</h1><p data-i18n="revSubtitle">Track crop sales and income</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-primary" onclick="openRevModal()">＋ <span data-i18n="addSale">Add Sale</span></button>
+    </div>
+  </div>
+  <div class="kpi-strip" id="revKPI"></div>
+  <div class="table-card">
+    <div class="table-toolbar">
+      <h3 data-i18n="allSales">All Sales</h3>
+      <div class="toolbar-right">
+        <input class="search-inp" id="revSearch" placeholder="🔍 Search..." oninput="renderRevTable()"/>
+        <select class="filter-sel" id="revFarmFilter" onchange="renderRevTable()">
+          <option value="" data-i18n="allFarms">All Farms</option>
+        </select>
+        <select class="filter-sel" id="revCropFilter" onchange="renderRevTable()">
+          <option value="" data-i18n="allCrops">All Crops</option>
+        </select>
+        <select class="filter-sel" id="revMonthFilter" onchange="renderRevTable()">
+          <option value="" data-i18n="allMonths">All Months</option>
+        </select>
+        <button class="btn btn-sm btn-outline" onclick="exportRevExcel()">📥 Excel</button>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th><th data-i18n="date">Date</th><th data-i18n="farm">Farm</th><th data-i18n="crop">Crop</th>
+          <th data-i18n="quantity">Qty</th><th data-i18n="rate">Rate/Unit</th><th data-i18n="amount">Amount</th>
+          <th data-i18n="buyer">Buyer</th><th data-i18n="payment">Payment</th><th data-i18n="actions">Actions</th>
+        </tr></thead>
+        <tbody id="revTableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-foot" id="revFoot"></div>
+  </div>
+</section>
+
+<!-- ==================== TASK PLANNER ==================== -->
+<section class="page" id="page-tasks">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_tasks">Task Planner</h1><p data-i18n="tasksSubtitle">Schedule and manage farm activities</p></div>
+    <div class="page-header-actions">
+      <button class="btn btn-primary" onclick="openTaskModal()">＋ <span data-i18n="addTask">Add Task</span></button>
+    </div>
+  </div>
+  <div class="task-status-tabs">
+    <button class="tstab active" data-filter="all" onclick="filterTasks('all',this)" data-i18n="allTasks">All Tasks</button>
+    <button class="tstab" data-filter="today" onclick="filterTasks('today',this)" data-i18n="todayTasks">Today</button>
+    <button class="tstab" data-filter="tomorrow" onclick="filterTasks('tomorrow',this)" data-i18n="tomorrowTasks">Tomorrow</button>
+    <button class="tstab" data-filter="upcoming" onclick="filterTasks('upcoming',this)" data-i18n="upcomingTasks">Upcoming</button>
+    <button class="tstab" data-filter="overdue" onclick="filterTasks('overdue',this)" data-i18n="overdueTasks">Overdue</button>
+    <button class="tstab" data-filter="done" onclick="filterTasks('done',this)" data-i18n="doneTasks">Completed</button>
+  </div>
+  <div class="tasks-grid" id="tasksGrid"></div>
+</section>
+
+<!-- ==================== ANALYTICS ==================== -->
+<section class="page" id="page-analytics">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_analytics">Profit & Analytics</h1><p data-i18n="analyticsSubtitle">Detailed financial insights</p></div>
+    <div class="page-header-actions">
+      <select class="filter-sel" id="analyticsYear" onchange="renderAnalytics()"></select>
+      <select class="filter-sel" id="analyticsFarm" onchange="renderAnalytics()">
+        <option value="all" data-i18n="allFarms">All Farms</option>
+      </select>
+    </div>
+  </div>
+  <div class="kpi-grid" id="analyticsKPI"></div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="monthlyPLChart">Monthly Profit / Loss</h3></div>
+      <div class="chart-wrap"><canvas id="cMonthPL"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="cropProfitChart">Crop-wise Profit</h3></div>
+      <div class="chart-wrap"><canvas id="cCropProfit"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="farmCompChart">Farm Comparison</h3></div>
+      <div class="chart-wrap"><canvas id="cFarmComp"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hdr"><h3 data-i18n="yearlyChart">Yearly Comparison</h3></div>
+      <div class="chart-wrap"><canvas id="cYearComp"></canvas></div>
+    </div>
+  </div>
+  <div class="section-title" data-i18n="monthBreakdown">Month-wise Breakdown</div>
+  <div class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th data-i18n="month">Month</th><th data-i18n="revenue">Revenue</th>
+          <th data-i18n="expenses">Expenses</th><th data-i18n="profit">Net Profit/Loss</th><th data-i18n="status">Status</th>
+        </tr></thead>
+        <tbody id="analyticsMonthTable"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== REPORTS ==================== -->
+<section class="page" id="page-reports">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_reports">Reports</h1><p data-i18n="reportsSubtitle">Generate and export reports</p></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('reports','rExp',this)" data-i18n="expReport">Expense Report</button>
+    <button class="tab-btn" onclick="switchTab('reports','rRev',this)" data-i18n="revReport">Revenue Report</button>
+    <button class="tab-btn" onclick="switchTab('reports','rPL',this)" data-i18n="plReport">P&L Report</button>
+    <button class="tab-btn" onclick="switchTab('reports','rCrop',this)" data-i18n="cropReport">Crop Report</button>
+  </div>
+  <div class="tab-pane active" id="tab-rExp">
+    <div class="form-card">
+      <div class="form-card-hdr"><h3 data-i18n="expReport">Expense Report</h3></div>
+      <div class="form-grid">
+        <div class="fg"><label data-i18n="fromDate">From Date</label><input class="fi" type="date" id="rExpFrom"/></div>
+        <div class="fg"><label data-i18n="toDate">To Date</label><input class="fi" type="date" id="rExpTo"/></div>
+        <div class="fg"><label data-i18n="farm">Farm</label>
+          <select class="fi" id="rExpFarm"><option value="" data-i18n="allFarms">All Farms</option></select>
+        </div>
+        <div class="fg"><label data-i18n="category">Category</label>
+          <select class="fi" id="rExpCat"><option value="" data-i18n="allCats">All Categories</option></select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="generateReport('exp')">📊 <span data-i18n="generate">Generate</span></button>
+        <button class="btn btn-blue" onclick="downloadReportPDF('exp')">📥 PDF</button>
+        <button class="btn btn-teal" onclick="downloadReportExcel('exp')">📥 Excel</button>
+        <button class="btn btn-orange" onclick="downloadReportCSV('exp')">📥 CSV</button>
+      </div>
+    </div>
+    <div id="rExpResult"></div>
+  </div>
+  <div class="tab-pane" id="tab-rRev">
+    <div class="form-card">
+      <div class="form-card-hdr"><h3 data-i18n="revReport">Revenue Report</h3></div>
+      <div class="form-grid">
+        <div class="fg"><label data-i18n="fromDate">From Date</label><input class="fi" type="date" id="rRevFrom"/></div>
+        <div class="fg"><label data-i18n="toDate">To Date</label><input class="fi" type="date" id="rRevTo"/></div>
+        <div class="fg"><label data-i18n="farm">Farm</label>
+          <select class="fi" id="rRevFarm"><option value="" data-i18n="allFarms">All Farms</option></select>
+        </div>
+        <div class="fg"><label data-i18n="crop">Crop</label>
+          <select class="fi" id="rRevCrop"><option value="" data-i18n="allCrops">All Crops</option></select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="generateReport('rev')">📊 <span data-i18n="generate">Generate</span></button>
+        <button class="btn btn-blue" onclick="downloadReportPDF('rev')">📥 PDF</button>
+        <button class="btn btn-teal" onclick="downloadReportExcel('rev')">📥 Excel</button>
+        <button class="btn btn-orange" onclick="downloadReportCSV('rev')">📥 CSV</button>
+      </div>
+    </div>
+    <div id="rRevResult"></div>
+  </div>
+  <div class="tab-pane" id="tab-rPL">
+    <div class="form-card">
+      <div class="form-card-hdr"><h3 data-i18n="plReport">Profit & Loss Report</h3></div>
+      <div class="form-grid">
+        <div class="fg"><label data-i18n="year">Year</label>
+          <select class="fi" id="rPLYear"></select>
+        </div>
+        <div class="fg"><label data-i18n="farm">Farm</label>
+          <select class="fi" id="rPLFarm"><option value="" data-i18n="allFarms">All Farms</option></select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="generateReport('pl')">📊 <span data-i18n="generate">Generate</span></button>
+        <button class="btn btn-blue" onclick="downloadReportPDF('pl')">📥 PDF</button>
+        <button class="btn btn-teal" onclick="downloadReportExcel('pl')">📥 Excel</button>
+      </div>
+    </div>
+    <div id="rPLResult"></div>
+  </div>
+  <div class="tab-pane" id="tab-rCrop">
+    <div class="form-card">
+      <div class="form-card-hdr"><h3 data-i18n="cropReport">Crop-wise Report</h3></div>
+      <div class="form-grid">
+        <div class="fg"><label data-i18n="farm">Farm</label>
+          <select class="fi" id="rCropFarm"><option value="" data-i18n="allFarms">All Farms</option></select>
+        </div>
+        <div class="fg"><label data-i18n="crop">Crop</label>
+          <select class="fi" id="rCropCrop"><option value="" data-i18n="allCrops">All Crops</option></select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="generateReport('crop')">📊 <span data-i18n="generate">Generate</span></button>
+        <button class="btn btn-blue" onclick="downloadReportPDF('crop')">📥 PDF</button>
+        <button class="btn btn-teal" onclick="downloadReportExcel('crop')">📥 Excel</button>
+      </div>
+    </div>
+    <div id="rCropResult"></div>
+  </div>
+</section>
+
+<!-- ==================== SETTINGS ==================== -->
+<section class="page" id="page-settings">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_settings">Settings</h1><p data-i18n="settingsSubtitle">App preferences and data management</p></div>
+  </div>
+  <div class="settings-grid">
+    <div class="settings-card">
+      <h3>🏡 <span data-i18n="farmInfo">Farm Information</span></h3>
+      <div class="fg"><label data-i18n="ownerName">Owner Name</label><input class="fi" id="sOwner" placeholder="Your Name"/></div>
+      <div class="fg"><label data-i18n="phone">Phone</label><input class="fi" id="sPhone" type="tel" placeholder="9876543210"/></div>
+      <div class="fg"><label data-i18n="address">Address</label><textarea class="fi" id="sAddress" rows="2" placeholder="Village, Taluka, District"></textarea></div>
+      <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:14px">💾 <span data-i18n="save">Save</span></button>
+    </div>
+    <div class="settings-card">
+      <h3>📂 <span data-i18n="dataManagement">Data Management</span></h3>
+      <p class="set-desc" data-i18n="dataDesc">Export and import all your farm data. Always backup before clearing.</p>
+      <div class="set-btns">
+        <button class="btn btn-outline" onclick="exportData()">📤 <span data-i18n="exportData">Export Data (JSON)</span></button>
+        <label class="btn btn-teal" style="cursor:pointer">
+          📥 <span data-i18n="importData">Import Data (JSON)</span>
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)"/>
+        </label>
+        <button class="btn btn-orange" onclick="clearSection('expenses')" data-i18n="clearExpenses">🗑 Clear All Expenses</button>
+        <button class="btn btn-orange" onclick="clearSection('revenue')" data-i18n="clearRevenue">🗑 Clear All Revenue</button>
+        <button class="btn btn-red" onclick="clearSection('all')" data-i18n="clearAll">⚠️ Clear All Data</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin:2px 0"/>
+        <button class="btn btn-outline" onclick="loadDemoData()" style="border-color:var(--blue);color:var(--blue)">🧪 <span data-i18n="loadDemo">Load Demo Data</span></button>
+      </div>
+    </div>
+    <div class="settings-card">
+      <h3>🔔 <span data-i18n="notifications">Notifications</span></h3>
+      <p class="set-desc" data-i18n="notifDesc">Enable browser notifications for task reminders.</p>
+      <button class="btn btn-primary" onclick="requestNotifPermission()" id="notifBtn">🔔 <span data-i18n="enableNotif">Enable Notifications</span></button>
+      <div id="notifStatus" class="notif-status" style="margin-top:10px"></div>
+    </div>
+    <div class="settings-card">
+      <h3>ℹ️ <span data-i18n="appInfo">App Info</span></h3>
+      <div class="app-info-list">
+        <div class="ai-row"><span data-i18n="appName">Mali Farm Manager</span><strong>v2.0.0</strong></div>
+        <div class="ai-row"><span data-i18n="storage">Storage</span><strong data-i18n="localStorage">Browser LocalStorage</strong></div>
+        <div class="ai-row"><span data-i18n="offline">Offline</span><strong data-i18n="yes">✅ Yes</strong></div>
+        <div class="ai-row"><span data-i18n="language">Language</span><strong>English / मराठी</strong></div>
+      </div>
+      <div class="info-note" data-i18n="infoNote">All data is stored locally. Export regularly to prevent data loss.</div>
+    </div>
+  </div>
+</section>
+
+</main><!-- END MAIN -->
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- FARM MODAL -->
+<div class="modal-back" id="farmModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="farmModalTitle">🏡 Add Farm</h3><button class="modal-x" onclick="closeModal('farmModal')">✕</button></div>
+    <input type="hidden" id="fmId"/>
+    <div class="form-grid">
+      <div class="fg form-full"><label data-i18n="farmName">Farm Name</label><input class="fi" id="fmName" placeholder="e.g. Home Farm"/></div>
+      <div class="fg"><label data-i18n="village">Village / Location</label><input class="fi" id="fmVillage" placeholder="e.g. Pune"/></div>
+      <div class="fg"><label data-i18n="area">Area</label><input class="fi" id="fmArea" placeholder="e.g. 5 Acres"/></div>
+      <div class="fg"><label data-i18n="ownerName">Owner Name</label><input class="fi" id="fmOwner" placeholder="Owner"/></div>
+      <div class="fg form-full"><label data-i18n="notes">Notes</label><textarea class="fi" id="fmNotes" rows="2" placeholder="Any notes..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('farmModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFarm()">💾 <span data-i18n="save">Save</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- CROP MODAL -->
+<div class="modal-back" id="cropModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="cropModalTitle">🌱 Add Crop</h3><button class="modal-x" onclick="closeModal('cropModal')">✕</button></div>
+    <input type="hidden" id="cmId"/>
+    <div class="form-grid">
+      <div class="fg"><label data-i18n="farm">Farm</label>
+        <select class="fi" id="cmFarm"></select>
+      </div>
+      <div class="fg"><label data-i18n="cropName">Crop Name</label>
+        <input class="fi" id="cmName" list="cropSuggestions" placeholder="e.g. Sugarcane"/>
+        <datalist id="cropSuggestions">
+          <option>Sugarcane / ऊस</option><option>Tomato / टोमॅटो</option><option>Onion / कांदा</option>
+          <option>Wheat / गहू</option><option>Maize / मका</option><option>Soybean / सोयाबीन</option>
+          <option>Cotton / कापूस</option><option>Grapes / द्राक्ष</option><option>Pomegranate / डाळिंब</option>
+          <option>Chilli / मिरची</option><option>Potato / बटाटा</option><option>Banana / केळी</option>
+          <option>Rice / भात</option><option>Groundnut / भुईमूग</option><option>Turmeric / हळद</option>
+          <option>Ginger / आले</option><option>Garlic / लसूण</option><option>Brinjal / वांगे</option>
+        </datalist>
+      </div>
+      <div class="fg"><label data-i18n="plantingDate">Planting Date</label><input class="fi" type="date" id="cmPlant"/></div>
+      <div class="fg"><label data-i18n="harvestDate">Expected Harvest</label><input class="fi" type="date" id="cmHarvest"/></div>
+      <div class="fg"><label data-i18n="area">Area Covered</label><input class="fi" id="cmArea" placeholder="e.g. 2 Acres"/></div>
+      <div class="fg"><label data-i18n="status">Status</label>
+        <select class="fi" id="cmStatus">
+          <option value="growing" data-i18n="growing">Growing</option>
+          <option value="harvested" data-i18n="harvested">Harvested</option>
+          <option value="planned" data-i18n="planned">Planned</option>
+          <option value="failed" data-i18n="failed">Failed</option>
+        </select>
+      </div>
+      <div class="fg form-full"><label data-i18n="notes">Notes</label><textarea class="fi" id="cmNotes" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('cropModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCrop()">💾 <span data-i18n="save">Save</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="modal-back" id="expModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="expModalTitle">💸 Add Expense</h3><button class="modal-x" onclick="closeModal('expModal')">✕</button></div>
+    <input type="hidden" id="emId"/>
+    <div class="form-grid">
+      <div class="fg"><label data-i18n="date">Date</label><input class="fi" type="date" id="emDate"/></div>
+      <div class="fg"><label data-i18n="farm">Farm</label>
+        <select class="fi" id="emFarm" onchange="populateCropDropdown('emCrop','emFarm')"></select>
+      </div>
+      <div class="fg"><label data-i18n="crop">Crop</label>
+        <select class="fi" id="emCrop"><option value="" data-i18n="general">General</option></select>
+      </div>
+      <div class="fg"><label data-i18n="category">Category</label>
+        <select class="fi" id="emCat">
+          <option value="" data-i18n="selectCat">Select Category</option>
+          <option>Fertilizers / खते</option><option>Seeds / बियाणे</option>
+          <option>Workers / मजुरी</option><option>Tractor / ट्रॅक्टर</option>
+          <option>Fuel / इंधन</option><option>Irrigation / सिंचन</option>
+          <option>Electricity / वीज</option><option>Pesticides / कीटकनाशके</option>
+          <option>Herbicides / तणनाशके</option><option>Transport / वाहतूक</option>
+          <option>Machinery Repair / यंत्र दुरुस्ती</option><option>Equipment / उपकरणे</option>
+          <option>Packaging / पॅकेजिंग</option><option>Miscellaneous / इतर</option>
+        </select>
+      </div>
+      <div class="fg"><label data-i18n="amount">Amount (₹)</label><input class="fi" type="number" id="emAmt" placeholder="0.00" min="0.01" step="0.01"/></div>
+      <div class="fg"><label data-i18n="payment">Payment Method</label>
+        <select class="fi" id="emPay">
+          <option>Cash / रोख</option><option>UPI</option><option>Cheque / धनादेश</option>
+          <option>Bank Transfer / बँक हस्तांतरण</option><option>Credit / उधार</option>
+        </select>
+      </div>
+      <div class="fg form-full"><label data-i18n="description">Description</label>
+        <input class="fi" id="emDesc" placeholder="Describe the expense..."/>
+      </div>
+      <div class="fg form-full"><label data-i18n="notes">Notes</label>
+        <textarea class="fi" id="emNotes" rows="2" placeholder="Additional notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('expModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpense()">💾 <span data-i18n="save">Save</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- REVENUE MODAL -->
+<div class="modal-back" id="revModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="revModalTitle">💰 Add Sale</h3><button class="modal-x" onclick="closeModal('revModal')">✕</button></div>
+    <input type="hidden" id="rmId"/>
+    <div class="form-grid">
+      <div class="fg"><label data-i18n="date">Date</label><input class="fi" type="date" id="rmDate"/></div>
+      <div class="fg"><label data-i18n="farm">Farm</label>
+        <select class="fi" id="rmFarm" onchange="populateCropDropdown('rmCrop','rmFarm')"></select>
+      </div>
+      <div class="fg"><label data-i18n="crop">Crop</label>
+        <select class="fi" id="rmCrop"><option value="">Select Crop</option></select>
+      </div>
+      <div class="fg"><label data-i18n="quantity">Quantity</label>
+        <input class="fi" type="number" id="rmQty" placeholder="e.g. 100" min="0.01" step="0.01" oninput="calcRevTotal()"/>
+      </div>
+      <div class="fg"><label data-i18n="unit">Unit</label>
+        <select class="fi" id="rmUnit">
+          <option>kg</option><option>quintal</option><option>ton</option><option>piece</option><option>dozen</option><option>litre</option>
+        </select>
+      </div>
+      <div class="fg"><label data-i18n="rate">Rate per Unit (₹)</label>
+        <input class="fi" type="number" id="rmRate" placeholder="e.g. 25" min="0.01" step="0.01" oninput="calcRevTotal()"/>
+      </div>
+      <div class="fg"><label data-i18n="amount">Total Amount (₹)</label>
+        <input class="fi" type="number" id="rmAmt" placeholder="Auto-calculated" min="0.01" step="0.01"/>
+      </div>
+      <div class="fg"><label data-i18n="buyer">Buyer Name</label><input class="fi" id="rmBuyer" placeholder="Buyer name"/></div>
+      <div class="fg"><label data-i18n="payment">Payment Method</label>
+        <select class="fi" id="rmPay">
+          <option>Cash / रोख</option><option>UPI</option><option>Cheque / धनादेश</option>
+          <option>Bank Transfer</option><option>Credit / उधार</option>
+        </select>
+      </div>
+      <div class="fg form-full"><label data-i18n="notes">Notes</label>
+        <textarea class="fi" id="rmNotes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('revModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRevenue()">💾 <span data-i18n="save">Save</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-back" id="taskModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="taskModalTitle">📅 Add Task</h3><button class="modal-x" onclick="closeModal('taskModal')">✕</button></div>
+    <input type="hidden" id="tmId"/>
+    <div class="form-grid">
+      <div class="fg form-full"><label data-i18n="taskDesc">Task Description</label>
+        <input class="fi" id="tmDesc" placeholder="e.g. Spray fertilizer on sugarcane"/>
+      </div>
+      <div class="fg"><label data-i18n="date">Date</label><input class="fi" type="date" id="tmDate"/></div>
+      <div class="fg"><label data-i18n="time">Time</label><input class="fi" type="time" id="tmTime"/></div>
+      <div class="fg"><label data-i18n="farm">Farm</label>
+        <select class="fi" id="tmFarm" onchange="populateCropDropdown('tmCrop','tmFarm')"></select>
+      </div>
+      <div class="fg"><label data-i18n="crop">Crop</label>
+        <select class="fi" id="tmCrop"><option value="">General</option></select>
+      </div>
+      <div class="fg"><label data-i18n="priority">Priority</label>
+        <select class="fi" id="tmPriority">
+          <option value="high" data-i18n="high">High</option>
+          <option value="medium" data-i18n="medium">Medium</option>
+          <option value="low" data-i18n="low">Low</option>
+        </select>
+      </div>
+      <div class="fg"><label data-i18n="status">Status</label>
+        <select class="fi" id="tmStatus">
+          <option value="pending" data-i18n="pending">Pending</option>
+          <option value="done" data-i18n="done">Done</option>
+          <option value="cancelled" data-i18n="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="fg"><label data-i18n="reminder">Reminder</label>
+        <select class="fi" id="tmReminder">
+          <option value="none" data-i18n="noReminder">No Reminder</option>
+          <option value="onday" data-i18n="onDayOf">On the day</option>
+          <option value="1day" data-i18n="oneDayBefore">1 day before</option>
+          <option value="2day" data-i18n="twoDaysBefore">2 days before</option>
+        </select>
+      </div>
+      <div class="fg form-full"><label data-i18n="notes">Notes</label>
+        <textarea class="fi" id="tmNotes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('taskModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTask()">💾 <span data-i18n="save">Save</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-back" id="confirmModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr"><h3>⚠️ <span data-i18n="confirmAction">Confirm Action</span></h3>
+      <button class="modal-x" onclick="closeModal('confirmModal')">✕</button>
+    </div>
+    <p id="confirmMsg" style="font-size:.9rem;color:var(--muted);padding:8px 0"></p>
+    <div id="undoHint" class="undo-hint" style="display:none">
+      <span data-i18n="undoHint">This action can be undone for a few seconds.</span>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('confirmModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-red" id="confirmOkBtn" data-i18n="delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- UNDO TOAST -->
+<div id="undoBar" class="undo-bar" style="display:none">
+  <span id="undoMsg">Item deleted</span>
+  <button onclick="undoDelete()" class="undo-btn" data-i18n="undo">Undo</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
