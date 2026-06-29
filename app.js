@@ -139,26 +139,23 @@ let chartInstances = {};
 /* ---- INIT FLAG KEY: tracks whether the app has ever been opened ---- */
 const INIT_FLAG_KEY = STORAGE_KEY + '_initialized';
 
-/* ===================== INIT ===================== */
+/* ===================== INIT =====================
+   initApp() is called by firebase.js AFTER auth + Firestore data
+   is loaded. DOMContentLoaded only sets up UI that doesn't need data.
+================================================== */
 document.addEventListener('DOMContentLoaded', () => {
-  loadDB();
   applyTheme(theme);
   applyLang(lang);
-
-  // ── First-ever launch detection ─────────────────────────────────────
-  // We check the raw localStorage entry for STORAGE_KEY (not just db in
-  // memory) so that a deliberate clearSection('all') — which explicitly
-  // sets INIT_FLAG_KEY='1' — prevents demo data from ever re-appearing.
-  const neverOpened = !localStorage.getItem(INIT_FLAG_KEY);
-  if (neverOpened) {
-    // Mark as initialised BEFORE doing anything else.
-    // Any future refresh or clear will see this flag.
+  // Set today's date on date inputs right away
+  initDateInputs();
+  // Mark init flag
+  if (!localStorage.getItem(INIT_FLAG_KEY)) {
     localStorage.setItem(INIT_FLAG_KEY, '1');
-    // NOTE: We do NOT call loadDemoData() here automatically.
-    // The user can click "Load Demo Data" from Settings if they want samples.
   }
-  // ────────────────────────────────────────────────────────────────────
+});
 
+// Called by firebase.js once auth + Firestore data is ready
+window.initApp = function() {
   initSettings();
   populateYearDropdowns();
   populateFilterDropdowns();
@@ -166,11 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
   initDateInputs();
   scheduleNotificationCheck();
   setInterval(scheduleNotificationCheck, 60000);
-  document.getElementById('dashDate').textContent = new Date().toLocaleDateString(
+  const dashDateEl = document.getElementById('dashDate');
+  if (dashDateEl) dashDateEl.textContent = new Date().toLocaleDateString(
     lang === 'mr' ? 'mr-IN' : 'en-IN',
     { weekday:'long', year:'numeric', month:'long', day:'numeric' }
   );
-});
+  // i18n refresh after data load
+  applyLang(lang);
+};
 
 /* ===================== DB (LocalStorage) ===================== */
 function loadDB() {
@@ -253,7 +253,7 @@ function saveSettings() {
   db.settings.owner   = document.getElementById('sOwner').value.trim();
   db.settings.phone   = document.getElementById('sPhone').value.trim();
   db.settings.address = document.getElementById('sAddress').value.trim();
-  saveDB();
+  saveDB(); // firebase.js overrides this to write to Firestore
   showToast('Settings saved ✅');
 }
 

@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Mali Farm Manager - शेत व्यवस्थापन</title>
 <link rel="manifest" href="manifest.json"/>
+<!-- Firebase v9 compat (works as global firebase.*) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,6 +17,53 @@
 <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
+
+<!-- ==================== AUTH SCREEN ==================== -->
+<div id="authWrapper" style="display:flex;min-height:100vh;align-items:center;justify-content:center;background:var(--bg);padding:20px">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon" style="width:56px;height:56px;font-size:1.8rem;margin:0 auto 12px">🌾</div>
+      <h1>Mali Farm Manager</h1>
+      <p>माली फार्म मॅनेजर</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Register</button>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label class="auth-label">📧 Email</label>
+      <input class="fi" type="email" id="authEmail" placeholder="your@email.com" autocomplete="email"
+             onkeydown="if(event.key==='Enter')fbLogin()"/>
+    </div>
+    <div class="fg" style="margin-bottom:6px">
+      <label class="auth-label">🔒 Password</label>
+      <div style="position:relative">
+        <input class="fi" type="password" id="authPass" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')fbLogin()" style="padding-right:44px"/>
+        <button onclick="togglePassVis()" class="auth-eye" id="authEyeBtn" title="Show/hide password">👁</button>
+      </div>
+    </div>
+    <div style="text-align:right;margin-bottom:16px">
+      <button onclick="fbForgotPassword()" class="auth-link">Forgot Password?</button>
+    </div>
+    <p id="authError" class="auth-error"></p>
+    <button class="btn btn-primary" id="authLoginBtn" onclick="fbLogin()" style="width:100%;justify-content:center;padding:12px">
+      🔐 Login
+    </button>
+    <div id="authRegisterSection" style="display:none;margin-top:10px">
+      <button class="btn btn-outline" id="authRegisterBtn" onclick="fbRegister()" style="width:100%;justify-content:center;padding:12px">
+        ✅ Create Account
+      </button>
+    </div>
+    <div class="auth-footer">
+      <p>🔒 Your data is securely stored in Firebase</p>
+      <p>☁️ Syncs across all your devices</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== APP WRAPPER ==================== -->
+<div id="appWrapper" style="display:none;width:100%">
 
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toastContainer"></div>
@@ -27,6 +78,7 @@
   <div class="mob-actions">
     <button class="mob-icon-btn" onclick="toggleTheme()" title="Toggle Theme" id="themeToggle">🌙</button>
     <button class="mob-icon-btn" onclick="toggleLang()" title="Language" id="langToggle">EN</button>
+    <button class="mob-icon-btn" onclick="fbLogout()" title="Logout">⏏</button>
   </div>
 </header>
 
@@ -64,6 +116,10 @@
       <select id="globalFarmFilter" class="farm-selector" onchange="setActiveFarm(this.value)">
         <option value="all" data-i18n="allFarms">All Farms</option>
       </select>
+    </div>
+    <div class="auth-user-row">
+      <span id="authUserInfo" class="auth-user-email"></span>
+      <button class="btn-logout" onclick="fbLogout()" title="Logout">⏏ Logout</button>
     </div>
   </div>
 </nav>
@@ -660,6 +716,9 @@
   <button onclick="undoDelete()" class="undo-btn" data-i18n="undo">Undo</button>
 </div>
 
+</div><!-- END appWrapper -->
+
 <script src="app.js"></script>
+<script src="firebase.js"></script>
 </body>
 </html>
