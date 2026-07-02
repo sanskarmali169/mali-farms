@@ -1,0 +1,12 @@
+{
+  "name": "Mali Farm Manager",
+  "short_name": "MaliFarm",
+  "description": "Farm Accounting & Management System",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1b5e20",
+  "theme_color": "#2e7d32",
+  "icons": [
+    { "src": "public/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
