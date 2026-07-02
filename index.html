@@ -104,6 +104,7 @@
     <button class="nav-item" onclick="showPage('revenue',this)"><span class="nav-icon">💰</span><span data-i18n="nav_revenue">Revenue / Sales</span></button>
     <div class="nav-label" data-i18n="planningMenu">Planning & Tasks</div>
     <button class="nav-item" onclick="showPage('tasks',this)"><span class="nav-icon">📅</span><span data-i18n="nav_tasks">Task Planner</span></button>
+    <button class="nav-item" onclick="showPage('calendar',this)"><span class="nav-icon">🗓️</span><span data-i18n="nav_calendar">Farm Calendar</span></button>
     <div class="nav-label" data-i18n="analyticsMenu">Analytics</div>
     <button class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📊</span><span data-i18n="nav_analytics">Profit & Analytics</span></button>
     <button class="nav-item" onclick="showPage('reports',this)"><span class="nav-icon">📄</span><span data-i18n="nav_reports">Reports</span></button>
@@ -300,6 +301,60 @@
     <button class="tstab" data-filter="done" onclick="filterTasks('done',this)" data-i18n="doneTasks">Completed</button>
   </div>
   <div class="tasks-grid" id="tasksGrid"></div>
+</section>
+
+<!-- ==================== FARM CALENDAR ==================== -->
+<section class="page" id="page-calendar">
+  <div class="page-header">
+    <div><h1 data-i18n="nav_calendar">Farm Calendar</h1><p data-i18n="calSubtitle">Schedule, diary and all farm activities</p></div>
+    <div class="page-header-actions">
+      <div style="position:relative">
+        <input class="search-inp" id="diarySearchInp" placeholder="🔍 Search diary…" oninput="searchDiary(this.value)" style="width:200px"/>
+        <div id="diarySearchResults" class="diary-search-dropdown"></div>
+      </div>
+      <button class="btn btn-primary" onclick="openCalTaskModal()">＋ <span data-i18n="addCalTask">Add Task</span></button>
+    </div>
+  </div>
+
+  <!-- View Switcher -->
+  <div class="cal-view-tabs">
+    <button class="cal-view-btn active" id="cvMonth" onclick="switchCalView('month',this)">📅 <span data-i18n="monthView">Month</span></button>
+    <button class="cal-view-btn" id="cvWeek"  onclick="switchCalView('week',this)">📆 <span data-i18n="weekView">Week</span></button>
+    <button class="cal-view-btn" id="cvAgenda" onclick="switchCalView('agenda',this)">📋 <span data-i18n="agendaView">Agenda</span></button>
+  </div>
+
+  <!-- Calendar Navigation -->
+  <div class="cal-nav">
+    <button class="cal-nav-btn" onclick="calNavigate(-1)">&#8249;</button>
+    <div class="cal-nav-title" id="calNavTitle"></div>
+    <button class="cal-nav-btn" onclick="calNavigate(1)">&#8250;</button>
+    <button class="cal-today-btn" onclick="calGoToday()" data-i18n="today">Today</button>
+  </div>
+
+  <!-- Legend -->
+  <div class="cal-legend">
+    <span class="cal-leg"><span class="cal-dot cal-dot-today"></span><span data-i18n="today">Today</span></span>
+    <span class="cal-leg"><span class="cal-dot cal-dot-upcoming"></span><span data-i18n="upcomingTasks">Upcoming</span></span>
+    <span class="cal-leg"><span class="cal-dot cal-dot-overdue"></span><span data-i18n="overdueTasks">Overdue</span></span>
+    <span class="cal-leg"><span class="cal-dot cal-dot-done"></span><span data-i18n="doneTasks">Done</span></span>
+    <span class="cal-leg"><span class="cal-dot cal-dot-recurring"></span><span data-i18n="recurring">Recurring</span></span>
+  </div>
+
+  <!-- Month View -->
+  <div id="calMonthView">
+    <div class="cal-weekdays" id="calWeekdays"></div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <!-- Week View -->
+  <div id="calWeekView" style="display:none">
+    <div class="cal-week-wrap" id="calWeekWrap"></div>
+  </div>
+
+  <!-- Agenda View -->
+  <div id="calAgendaView" style="display:none">
+    <div id="calAgendaList"></div>
+  </div>
 </section>
 
 <!-- ==================== ANALYTICS ==================== -->
@@ -716,9 +771,115 @@
   <button onclick="undoDelete()" class="undo-btn" data-i18n="undo">Undo</button>
 </div>
 
+<!-- CALENDAR TASK MODAL -->
+<div class="modal-back" id="calTaskModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-hdr">
+      <h3 id="calTaskModalTitle">📅 Add Calendar Task</h3>
+      <button class="modal-x" onclick="closeModal('calTaskModal')">✕</button>
+    </div>
+    <input type="hidden" id="ctId"/>
+    <div class="form-grid">
+      <div class="fg form-full">
+        <label data-i18n="taskName">Task Name</label>
+        <input class="fi" id="ctName" placeholder="e.g. Spray pesticide"/>
+      </div>
+      <div class="fg">
+        <label data-i18n="farm">Farm</label>
+        <select class="fi" id="ctFarm" onchange="calPopulateCrops()"></select>
+      </div>
+      <div class="fg">
+        <label data-i18n="crop">Crop</label>
+        <select class="fi" id="ctCrop"><option value="">General</option></select>
+      </div>
+      <div class="fg">
+        <label data-i18n="category">Category</label>
+        <select class="fi" id="ctCat">
+          <option value="fertilizer">🌿 Fertilizer / खते</option>
+          <option value="irrigation">💧 Irrigation / सिंचन</option>
+          <option value="spraying">🪣 Spraying / फवारणी</option>
+          <option value="harvesting">🌾 Harvesting / कापणी</option>
+          <option value="labour">👷 Labour / मजुरी</option>
+          <option value="machinery">🚜 Machinery / यंत्र</option>
+          <option value="other">📌 Other / इतर</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label data-i18n="date">Date</label>
+        <input class="fi" type="date" id="ctDate"/>
+      </div>
+      <div class="fg">
+        <label data-i18n="time">Time</label>
+        <input class="fi" type="time" id="ctTime"/>
+      </div>
+      <div class="fg">
+        <label data-i18n="priority">Priority</label>
+        <select class="fi" id="ctPriority">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🔵 Low</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label data-i18n="status">Status</label>
+        <select class="fi" id="ctStatus">
+          <option value="pending">⏳ Pending</option>
+          <option value="done">✅ Done</option>
+          <option value="cancelled">❌ Cancelled</option>
+        </select>
+      </div>
+      <!-- Recurring -->
+      <div class="fg">
+        <label data-i18n="recurring">Recurring</label>
+        <select class="fi" id="ctRecurring" onchange="toggleRecurringFields()">
+          <option value="none">None</option>
+          <option value="daily">Daily / दररोज</option>
+          <option value="weekly">Weekly / साप्ताहिक</option>
+          <option value="monthly">Monthly / मासिक</option>
+          <option value="custom">Custom / सानुकूल</option>
+        </select>
+      </div>
+      <div class="fg" id="ctRecurringEndWrap" style="display:none">
+        <label data-i18n="recurringEnd">Repeat Until</label>
+        <input class="fi" type="date" id="ctRecurringEnd"/>
+      </div>
+      <div class="fg" id="ctRecurringIntervalWrap" style="display:none">
+        <label data-i18n="recurringInterval">Every N Days</label>
+        <input class="fi" type="number" id="ctRecurringInterval" value="7" min="1" max="365"/>
+      </div>
+      <!-- Notification -->
+      <div class="fg">
+        <label data-i18n="notification">Notification</label>
+        <select class="fi" id="ctNotif">
+          <option value="none">None</option>
+          <option value="onday" selected>On the day</option>
+          <option value="1day">1 day before</option>
+          <option value="2day">2 days before</option>
+          <option value="1week">1 week before</option>
+        </select>
+      </div>
+      <div class="fg form-full">
+        <label data-i18n="notes">Notes</label>
+        <textarea class="fi" id="ctNotes" rows="2" placeholder="Additional notes…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('calTaskModal')" data-i18n="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCalTask()">💾 <span data-i18n="save">Save</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- DIARY / DAY PANEL (full slide-in diary page) -->
+<div id="calDayPanel" class="cal-day-panel">
+  <!-- Content is fully rendered by renderDiaryPage() in calendar.js -->
+</div>
+<div id="calDayPanelOverlay" class="cal-day-panel-overlay" onclick="closeDayPanel()" style="display:none"></div>
+
 </div><!-- END appWrapper -->
 
 <script src="app.js"></script>
 <script src="firebase.js"></script>
+<script src="calendar.js"></script>
 </body>
 </html>

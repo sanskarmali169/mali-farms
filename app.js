@@ -71,6 +71,12 @@ const i18n = {
     dashGreetMorning:'Good Morning 🌅', dashGreetAfternoon:'Good Afternoon ☀️',
     dashGreetEvening:'Good Evening 🌙',
     loadDemo:'Load Demo Data',
+    nav_calendar:'Farm Calendar', calSubtitle:'Schedule and track all farm activities',
+    addCalTask:'Add Task', monthView:'Month', weekView:'Week', agendaView:'Agenda',
+    today:'Today', recurring:'Recurring', taskName:'Task Name',
+    recurringEnd:'Repeat Until', recurringInterval:'Every N Days',
+    notification:'Notification', noCalTasks:'No tasks for this date.',
+    calTemplateAdded:'Crop schedule template added to calendar ✅',
   },
   mr: {
     appName:'माली फार्म मॅनेजर', tagline:'शेत हिशेब आणि व्यवस्थापन', darkMode:'डार्क मोड',
@@ -124,6 +130,12 @@ const i18n = {
     profitLabel:'नफा', lossLabel:'तोटा',
     dashGreetMorning:'सुप्रभात 🌅', dashGreetAfternoon:'शुभ दुपार ☀️', dashGreetEvening:'शुभ संध्याकाळ 🌙',
     loadDemo:'डेमो डेटा लोड करा',
+    nav_calendar:'शेत दिनदर्शिका', calSubtitle:'सर्व शेत कामांचे वेळापत्रक',
+    addCalTask:'काम जोडा', monthView:'महिना', weekView:'आठवडा', agendaView:'अजेंडा',
+    today:'आज', recurring:'पुनरावृत्ती', taskName:'कामाचे नाव',
+    recurringEnd:'पर्यंत पुनरावृत्ती', recurringInterval:'प्रत्येक N दिवस',
+    notification:'सूचना', noCalTasks:'या तारखेला कोणतेही काम नाही.',
+    calTemplateAdded:'पीक वेळापत्रक टेम्पलेट दिनदर्शिकेत जोडले ✅',
   }
 };
 
@@ -182,7 +194,10 @@ function loadDB() {
     db.expenses = db.expenses || [];
     db.revenue  = db.revenue  || [];
     db.tasks    = db.tasks    || [];
-    db.settings = db.settings || {};
+    db.calTasks   = db.calTasks   || [];
+    db.diaryNotes = db.diaryNotes || [];
+    db.diaryWeather = db.diaryWeather || {};
+    db.settings   = db.settings   || {};
   } catch(e) { console.warn('DB load error', e); }
 }
 function saveDB() {
@@ -273,6 +288,7 @@ function showPage(id, btn) {
     case 'expenses':  renderExpTable(); renderExpKPI(); renderExpChart(); break;
     case 'revenue':   renderRevTable(); renderRevKPI(); break;
     case 'tasks':     renderTasks('all'); break;
+    case 'calendar':  if(typeof renderCalendar==='function') renderCalendar(); break;
     case 'analytics': renderAnalytics(); break;
     case 'reports':   populateReportDropdowns(); break;
     case 'settings':  initSettings(); break;
@@ -602,6 +618,10 @@ function saveCrop() {
   populateFilterDropdowns();
   renderCropsPage();
   showToast(crop.name + ' saved');
+  // Auto-generate calendar schedule template for new crops
+  if (!currentEditId && typeof generateCropScheduleTemplate === 'function') {
+    generateCropScheduleTemplate(crop);
+  }
 }
 function deleteCrop(id) {
   const c = db.crops.find(x=>x.id===id);
@@ -1642,7 +1662,29 @@ function getCropName(id) {
 /* ===================== SERVICE WORKER REGISTRATION ===================== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW reg failed:', err));
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        // Listen for new SW waiting to activate
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version is ready — show toast and auto-reload after 3 seconds
+              showToast('🔄 New version available! Updating…', 'info');
+              setTimeout(() => window.location.reload(), 3000);
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW registration failed:', err));
+
+    // Also listen for the SW_UPDATED message posted from sw.js activate
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data && event.data.type === 'SW_UPDATED') {
+        showToast('✅ App updated to latest version!', 'info');
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    });
   });
 }
 

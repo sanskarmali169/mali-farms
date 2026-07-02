@@ -30,7 +30,7 @@ fsdb.enablePersistence({ synchronizeTabs: true })
 /* ── Constants ──────────────────────────────────────────────────── */
 const MIGRATION_FLAG  = 'maliFarm_migrated_v1';
 const LS_KEY          = 'maliFarmData';
-const COLLECTIONS     = ['farms','crops','expenses','revenue','tasks'];
+const COLLECTIONS     = ['farms','crops','expenses','revenue','tasks','calTasks','diaryNotes'];
 let   currentUser     = null;
 let   firestoreUnsubs = [];   // holds onSnapshot unsubscribe functions
 
@@ -435,6 +435,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  // Patch deleteDiaryNote for Firestore
+  window.deleteDiaryNote = function(id, dateStr) {
+    confirmAction(typeof lang!=='undefined'&&lang==='mr'?'ही नोंद हटवायची?':'Delete this note?', async () => {
+      db.diaryNotes = (db.diaryNotes||[]).filter(n=>n.id!==id);
+      try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(_) {}
+      await deleteFromFirestore('diaryNotes', id);
+      if (typeof renderDiaryPage === 'function') renderDiaryPage(dateStr || (typeof diaryDate!=='undefined'?diaryDate:null));
+      showToast('Note deleted');
+    });
+  };
+
   // Patch clearSection — must also delete all Firestore docs
   window.clearSection = function(section) {
     const msg = section === 'all'      ? 'Delete ALL data? This cannot be undone!' :
@@ -449,8 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(_) {}
         if (uid) {
           for (const col of COLLECTIONS) await deleteCollection(uid, col);
-        }
-      } else if (section === 'expenses') {
+        }      } else if (section === 'expenses') {
         const ids = db.expenses.map(e => e.id);
         db.expenses = [];
         try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(_) {}

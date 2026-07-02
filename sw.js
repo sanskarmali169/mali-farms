@@ -8,7 +8,7 @@
 /* ── BUMP THIS every time you deploy a new version ────────────
    Format: 'mali-farm-vYYYYMMDD-N'
    The browser detects this file changed → triggers update flow. */
-const CACHE_VERSION = 'mali-farm-v20250629-2';
+const CACHE_VERSION = 'mali-farm-v20250629-3';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
   './style.css',
   './app.js',
   './firebase.js',
+  './calendar.js',
   './manifest.json'
 ];
 
